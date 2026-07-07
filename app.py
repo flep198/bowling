@@ -139,7 +139,7 @@ def compute_player_stats(user, include_practice=False):
     q = Game.query.filter_by(user_id=user.id)
     if not include_practice:
         q = q.filter_by(practice=False)
-    games = q.order_by(Game.created_at.desc()).all()
+    games = q.order_by(Game.id.desc()).all()
     all_scores = [g.total_score for g in games]
     total_strikes = 0
     total_spares = 0
