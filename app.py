@@ -657,11 +657,12 @@ def server_error(e):
     return render_template("error.html", code=500, msg="Something went wrong"), 500
 
 
+with app.app_context():
+    db.create_all()
+    seed_admin()
+    auto_backup()
+
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-        seed_admin()
-        auto_backup()
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=debug, host="0.0.0.0", port=port)
