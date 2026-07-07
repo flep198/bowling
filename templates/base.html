@@ -12,7 +12,8 @@
   <nav class="navbar">
     <div class="nav-inner">
       <a href="{{ url_for('dashboard') }}" class="brand">👑🎳 Drei-Königs-Bowling</a>
-      <div class="nav-links">
+      <button class="burger" id="burgerBtn" aria-label="Menu">☰</button>
+      <div class="nav-links" id="navLinks">
         {% if current_user.is_authenticated %}
           <a href="{{ url_for('dashboard') }}">Dashboard</a>
           <a href="{{ url_for('add_game') }}">➕ New Game</a>
@@ -28,6 +29,11 @@
       </div>
     </div>
   </nav>
+  <script>
+  document.getElementById('burgerBtn')?.addEventListener('click', function(){
+    document.getElementById('navLinks').classList.toggle('open');
+  });
+  </script>
 
   <main class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
