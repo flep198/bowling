@@ -23,6 +23,7 @@
         <th>Strike%</th>
         <th>Spare%</th>
         <th>Closed%</th>
+        <th title="Frames where both rolls are 0">Gutter</th>
         <th title="1st / 2nd / 3rd">🥇🥈🥉</th>
         <th>Last 5</th>
       </tr>
@@ -45,6 +46,7 @@
         <td class="stat-pct">{{ p.stats.strike_pct }}%</td>
         <td class="stat-pct">{{ p.stats.spare_pct }}%</td>
         <td class="stat-pct">{{ p.stats.closed_pct }}%</td>
+        <td class="stat-pct">{{ p.stats.gutter_balls }}</td>
         <td class="placements">
           {% set ns = p.stats.placements %}
           <span class="p1" title="1st">{{ ns.get(1, 0) }}</span>

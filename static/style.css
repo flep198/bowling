@@ -251,6 +251,11 @@ td {
   font-size: 0.82rem;
 }
 
+.leaderboard {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .leaderboard table, .recent-games table {
   background: #1a2736;
   border-radius: 12px;

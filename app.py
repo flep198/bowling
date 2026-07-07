@@ -145,12 +145,16 @@ def compute_player_stats(user, include_practice=False):
     total_strikes = 0
     total_spares = 0
     total_frames = 0
+    total_gutter_balls = 0
     for g in games:
         if g.frames:
             s, sp = frame_stats(g.frames)
             total_strikes += s
             total_spares += sp
             total_frames += len(g.frames)
+            for f in g.frames:
+                if f.roll1 == 0 and (f.roll2 is None or f.roll2 == 0):
+                    total_gutter_balls += 1
 
     placements = {}
     for g in games:
@@ -167,6 +171,7 @@ def compute_player_stats(user, include_practice=False):
             "count": 0, "avg": 0, "high": 0, "low": 0,
             "strikes": 0, "spares": 0, "closed": 0,
             "strike_pct": 0, "spare_pct": 0, "closed_pct": 0,
+            "gutter_balls": 0,
             "last_five": [], "placements": {}, "sessions": 0,
             "score_history": [],
         }
@@ -190,6 +195,7 @@ def compute_player_stats(user, include_practice=False):
         "strike_pct": round(total_strikes / total_frames * 100, 1) if total_frames else 0,
         "spare_pct": round(total_spares / nsf * 100, 1) if nsf else 0,
         "closed_pct": round(closed / total_frames * 100, 1) if total_frames else 0,
+        "gutter_balls": total_gutter_balls,
         "last_five": last_five,
         "best_in_last_five": max(last_five_scores) if last_five_scores else 0,
         "score_history": score_history,
@@ -419,8 +425,14 @@ def dashboard():
     recent_sessions = (
         GameSession.query.order_by(
             GameSession.date.desc(), GameSession.created_at.desc()
-        ).limit(10).all()
+        ).limit(20).all()
     )
+    if not include_practice:
+        recent_sessions = [
+            s for s in recent_sessions
+            if any(not g.practice for g in s.entries)
+        ]
+    recent_sessions = recent_sessions[:10]
 
     CHART_COLORS = ['#f5c842', '#6fcf97', '#eb5757', '#88c0f0', '#cd7f32', '#b0c4d8', '#e0b532', '#4a90d9', '#d94a8e', '#4ad9b5']
     chart_data = []
@@ -499,12 +511,16 @@ def player_stats(user_id):
     total_strikes = 0
     total_spares = 0
     total_frames = 0
+    total_gutter_balls = 0
     for g in games:
         if g.frames:
             s, sp = frame_stats(g.frames)
             total_strikes += s
             total_spares += sp
             total_frames += len(g.frames)
+            for f in g.frames:
+                if f.roll1 == 0 and (f.roll2 is None or f.roll2 == 0):
+                    total_gutter_balls += 1
     nsf = total_frames - total_strikes
     closed = total_strikes + total_spares
 
@@ -571,6 +587,7 @@ def player_stats(user_id):
             "spare_pct": spare_pct,
             "closed_pct": closed_pct,
             "closed": closed,
+            "gutter_balls": total_gutter_balls,
             "placements": placements,
         },
     )
