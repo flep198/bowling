@@ -148,6 +148,7 @@
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.1.0/dist/chartjs-plugin-zoom.min.js"></script>
 <script>
 (function(){
   var data = {{ chart_data | tojson }};
@@ -177,7 +178,21 @@
     });
   }
 
-  new Chart(canvas, {
+  // ── Compute dynamic y-range ──────────────────────────
+  var allScores = [];
+  for (var i = 0; i < data.length; i++) {
+    for (var j = 0; j < data[i].scores.length; j++) {
+      allScores.push(data[i].scores[j]);
+    }
+  }
+  var dataMin = Math.min.apply(null, allScores);
+  var dataMax = Math.max.apply(null, allScores);
+  var range = dataMax - dataMin || 50;
+  var buffer = range * 0.1;
+  var yMin = Math.max(0, Math.floor(dataMin - buffer));
+  var yMax = Math.ceil(dataMax + buffer);
+
+  var chart = new Chart(canvas, {
     type: 'line',
     data: { labels: labels, datasets: datasets },
     options: {
@@ -193,6 +208,23 @@
             title: function(items) { return 'Game ' + items[0].label; },
           },
         },
+        zoom: {
+          zoom: {
+            wheel: { enabled: true },
+            pinch: { enabled: true },
+            drag: {
+              enabled: true,
+              backgroundColor: 'rgba(245,200,66,0.08)',
+              borderColor: '#f5c842',
+              borderWidth: 1,
+            },
+            mode: 'xy',
+          },
+          pan: {
+            enabled: true,
+            mode: 'xy',
+          },
+        },
       },
       scales: {
         x: {
@@ -201,8 +233,8 @@
           grid: { color: '#2a3a4a' },
         },
         y: {
-          min: 0,
-          max: 300,
+          min: yMin,
+          max: yMax,
           title: { display: true, text: 'Score', color: '#6a7d90' },
           ticks: { color: '#6a7d90' },
           grid: { color: '#2a3a4a' },
@@ -210,6 +242,16 @@
       },
     },
   });
+
+  // ── Reset zoom button ─────────────────────────────────
+  var btn = document.createElement('button');
+  btn.textContent = '🔍 Reset zoom';
+  btn.className = 'btn btn-sm';
+  btn.style.cssText = 'margin-top:0.5rem;font-size:0.8rem';
+  btn.addEventListener('click', function() {
+    chart.resetZoom();
+  });
+  canvas.parentNode.appendChild(btn);
 })();
 </script>
 {% endblock %}
