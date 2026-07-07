@@ -2,7 +2,18 @@
 {% block content %}
 <div class="dash-header">
   <h1 style="margin:0">📊 {{ player.username }}</h1>
-  <a href="{{ url_for('dashboard') }}" class="btn-outline">← Back to Dashboard</a>
+  <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+    <select id="compareSelect" class="compare-select">
+      <option value="">— Compare with —</option>
+      {% for u in all_users %}
+      <option value="{{ u.id }}" {{ 'selected' if compare_id == u.id else '' }}>{{ u.username }}</option>
+      {% endfor %}
+    </select>
+    <a href="{{ url_for('player_stats', user_id=player.id, practice='0' if include_practice else '1') }}" class="practice-toggle">
+      {% if include_practice %}🙈 Hide practice{% else %}🏋️ Show practice{% endif %}
+    </a>
+    <a href="{{ url_for('dashboard') }}" class="btn-outline">← Back</a>
+  </div>
 </div>
 
 {% if stats.count == 0 %}
@@ -29,6 +40,85 @@
   </div>
 </div>
 
+<div class="chart-row">
+  <div class="chart-wrap">
+    <h2 style="margin:0 0 0.5rem">🏆 Highest Scoring Game</h2>
+    {% if best_game %}
+    <div class="game-card">
+      <div class="game-header">
+        <span class="game-total good">{{ best_game.total_score }}</span>
+        <span class="game-date">{{ best_game.session.date.strftime('%b %d, %Y') if best_game.session else '' }}</span>
+        {% if best_game.rank == 1 %}<span class="rank-badge">👑</span>{% endif %}
+        {% if best_game.practice %}<span class="practice-badge-sm">🏋️</span>{% endif %}
+      </div>
+      {% if best_game.frames %}
+      <div class="game-frames">
+        {% for f in best_game.frames %}
+        <div class="frame-chip">
+          <span class="fc-label">{{ f.frame }}</span>
+          <span class="fc-rolls">
+            {% if f.roll1 == 10 %}<span class="strike">X</span>
+            {% else %}<span>{{ f.roll1 }}</span>{% endif %}
+            {% if f.frame < 10 %}
+              {% if f.roll1 == 10 %}<span class="empty">-</span>
+              {% elif f.roll2 is not none and f.roll1 + f.roll2 == 10 %}<span class="spare">/</span>
+              {% elif f.roll2 is not none %}<span>{{ f.roll2 }}</span>{% endif %}
+            {% else %}
+              {% if f.roll2 is not none and f.roll1 != 10 and f.roll1 + f.roll2 == 10 %}<span class="spare">/</span>
+              {% elif f.roll2 is not none and f.roll1 == 10 and f.roll2 == 10 %}<span class="strike">X</span>
+              {% elif f.roll2 is not none %}<span>{{ f.roll2 }}</span>{% endif %}
+              {% if f.roll3 is not none and f.roll3 == 10 %}<span class="strike">X</span>
+              {% elif f.roll3 is not none and f.roll2 is not none and f.roll2 + f.roll3 == 10 and f.roll2 != 10 %}<span class="spare">/</span>
+              {% elif f.roll3 is not none %}<span>{{ f.roll3 }}</span>{% endif %}
+            {% endif %}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="chart-wrap">
+    <h2 style="margin:0 0 0.5rem">🎯 Best Closing Rate</h2>
+    {% if best_closed_game %}
+    <div class="game-card">
+      <div class="game-header">
+        <span class="game-total {{ 'good' if best_closed_game.total_score >= 200 else 'mid' if best_closed_game.total_score >= 150 else '' }}">{{ best_closed_game.total_score }}</span>
+        <span class="game-date">{{ best_closed_game.session.date.strftime('%b %d, %Y') if best_closed_game.session else '' }}</span>
+        <span class="game-closed-rate">{{ "%.0f"|format(best_closed_rate * 100) }}% closed</span>
+        {% if best_closed_game.practice %}<span class="practice-badge-sm">🏋️</span>{% endif %}
+      </div>
+      {% if best_closed_game.frames %}
+      <div class="game-frames">
+        {% for f in best_closed_game.frames %}
+        <div class="frame-chip">
+          <span class="fc-label">{{ f.frame }}</span>
+          <span class="fc-rolls">
+            {% if f.roll1 == 10 %}<span class="strike">X</span>
+            {% else %}<span>{{ f.roll1 }}</span>{% endif %}
+            {% if f.frame < 10 %}
+              {% if f.roll1 == 10 %}<span class="empty">-</span>
+              {% elif f.roll2 is not none and f.roll1 + f.roll2 == 10 %}<span class="spare">/</span>
+              {% elif f.roll2 is not none %}<span>{{ f.roll2 }}</span>{% endif %}
+            {% else %}
+              {% if f.roll2 is not none and f.roll1 != 10 and f.roll1 + f.roll2 == 10 %}<span class="spare">/</span>
+              {% elif f.roll2 is not none and f.roll1 == 10 and f.roll2 == 10 %}<span class="strike">X</span>
+              {% elif f.roll2 is not none %}<span>{{ f.roll2 }}</span>{% endif %}
+              {% if f.roll3 is not none and f.roll3 == 10 %}<span class="strike">X</span>
+              {% elif f.roll3 is not none and f.roll2 is not none and f.roll2 + f.roll3 == 10 and f.roll2 != 10 %}<span class="spare">/</span>
+              {% elif f.roll3 is not none %}<span>{{ f.roll3 }}</span>{% endif %}
+            {% endif %}
+          </span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
 <h2>📈 Score Timeline</h2>
 <div class="chart-wrap">
   <canvas id="scoreChart"></canvas>
@@ -47,37 +137,78 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-{% set color = '#f5c842' %}
-var scoreHistory = {{ score_history | tojson }};
+// ── Compare dropdown ───────────────────────────────
+document.getElementById('compareSelect').addEventListener('change', function() {
+  var params = new URLSearchParams(window.location.search);
+  if (this.value) {
+    params.set('compare_id', this.value);
+  } else {
+    params.delete('compare_id');
+  }
+  var qs = params.toString();
+  window.location.search = qs ? '?' + qs : '';
+});
+
+{% set color1 = '#f5c842' %}
+{% set color2 = '#88c0f0' %}
+
+var sh = {{ score_history | tojson }};
+{% if compare_score_history %}
+var sh2 = {{ compare_score_history | tojson }};
+{% endif %}
+
 var labels = [];
-for (var i = 1; i <= scoreHistory.length; i++) labels.push(i);
+for (var i = 1; i <= sh.length; i++) labels.push(i);
 
 // ── Score Timeline ─────────────────────────────────
+var timelineDatasets = [{
+  label: '{{ player.username }}',
+  data: sh.map(function(s) { return s.score; }),
+  borderColor: '{{ color1 }}',
+  backgroundColor: '{{ color1 }}22',
+  pointBackgroundColor: '{{ color1 }}',
+  pointRadius: 4,
+  borderWidth: 2,
+  tension: 0.1,
+}];
+
+{% if compare_score_history %}
+var maxLen = Math.max(sh.length, sh2.length);
+for (var i = 1; i <= maxLen; i++) labels.push(i);
+labels = [];
+for (var i = 1; i <= maxLen; i++) labels.push(i);
+
+timelineDatasets.push({
+  label: '{{ compare_player.username }}',
+  data: sh2.map(function(s) { return s.score; }),
+  borderColor: '{{ color2 }}',
+  backgroundColor: '{{ color2 }}22',
+  pointBackgroundColor: '{{ color2 }}',
+  pointRadius: 4,
+  borderWidth: 2,
+  tension: 0.1,
+  borderDash: [5, 3],
+});
+{% endif %}
+
 new Chart(document.getElementById('scoreChart'), {
   type: 'line',
-  data: {
-    labels: labels,
-    datasets: [{
-      label: '{{ player.username }}',
-      data: scoreHistory.map(function(s) { return s.score; }),
-      borderColor: '{{ color }}',
-      backgroundColor: '{{ color }}22',
-      pointBackgroundColor: '{{ color }}',
-      pointRadius: 4,
-      borderWidth: 2,
-      tension: 0.1,
-    }],
-  },
+  data: { labels: labels, datasets: timelineDatasets },
   options: {
     responsive: true,
     maintainAspectRatio: true,
     aspectRatio: 2.5,
     plugins: {
-      legend: { display: false },
+      legend: {
+        labels: { color: '#b0c4d8', font: { size: 11 } },
+      },
       tooltip: {
         callbacks: {
           title: function(items) {
-            var pt = scoreHistory[items[0].dataIndex];
+            var ds = items[0].datasetIndex;
+            var hist = ds === 0 ? sh : sh2;
+            if (!hist) hist = sh;
+            var pt = hist[items[0].dataIndex];
             return (pt ? pt.date : '') + ' — Game ' + items[0].label;
           },
         },
@@ -90,8 +221,6 @@ new Chart(document.getElementById('scoreChart'), {
         grid: { color: '#2a3a4a' },
       },
       y: {
-        min: Math.max(0, Math.floor(Math.min.apply(null, scoreHistory.map(function(s){return s.score})) * 0.9)),
-        max: Math.ceil(Math.max.apply(null, scoreHistory.map(function(s){return s.score})) * 1.1),
         title: { display: true, text: 'Score', color: '#6a7d90' },
         ticks: { color: '#6a7d90' },
         grid: { color: '#2a3a4a' },
@@ -100,27 +229,60 @@ new Chart(document.getElementById('scoreChart'), {
   },
 });
 
-// ── Score Histogram ────────────────────────────────
-var scoreBins = {{ score_bin_labels | tojson }};
-var scoreHist = {{ score_histogram | tojson }};
+// ── Score Histogram (filtered) ─────────────────────
+var allBins = {{ score_bin_labels | tojson }};
+var hist1 = {{ score_histogram | tojson }};
+{% if compare_score_histogram %}
+var hist2 = {{ compare_score_histogram | tojson }};
+{% else %}
+var hist2 = null;
+{% endif %}
+
+var filteredBins = [];
+var fhist1 = [];
+var fhist2 = [];
+for (var i = 0; i < allBins.length; i++) {
+  var v1 = hist1[i];
+  var v2 = hist2 ? hist2[i] : 0;
+  if (v1 > 0 || v2 > 0) {
+    filteredBins.push(allBins[i]);
+    fhist1.push(v1);
+    if (hist2) fhist2.push(v2);
+  }
+}
+
+var histDatasets = [{
+  label: '{{ player.username }}',
+  data: fhist1,
+  backgroundColor: '{{ color1 }}88',
+  borderColor: '{{ color1 }}',
+  borderWidth: 1,
+  borderRadius: 3,
+}];
+
+{% if compare_score_histogram %}
+histDatasets.push({
+  label: '{{ compare_player.username }}',
+  data: fhist2,
+  backgroundColor: '{{ color2 }}88',
+  borderColor: '{{ color2 }}',
+  borderWidth: 1,
+  borderRadius: 3,
+});
+{% endif %}
+
 new Chart(document.getElementById('scoreHistogram'), {
   type: 'bar',
-  data: {
-    labels: scoreBins,
-    datasets: [{
-      label: 'Games',
-      data: scoreHist,
-      backgroundColor: 'rgba(245,200,66,0.6)',
-      borderColor: '#f5c842',
-      borderWidth: 1,
-      borderRadius: 3,
-    }],
-  },
+  data: { labels: filteredBins, datasets: histDatasets },
   options: {
     responsive: true,
     maintainAspectRatio: true,
     aspectRatio: 1.8,
-    plugins: { legend: { display: false } },
+    plugins: {
+      legend: {
+        labels: { color: '#b0c4d8', font: { size: 10 } },
+      },
+    },
     scales: {
       x: {
         ticks: { color: '#6a7d90', font: { size: 9 } },
@@ -138,24 +300,40 @@ new Chart(document.getElementById('scoreHistogram'), {
 // ── First Throw Histogram ──────────────────────────
 var frLabels = [];
 for (var i = 0; i <= 10; i++) frLabels.push(i);
+var frHist1 = {{ first_roll_histogram | tojson }};
+
+var frDatasets = [{
+  label: '{{ player.username }}',
+  data: frHist1,
+  backgroundColor: '{{ color1 }}88',
+  borderColor: '{{ color1 }}',
+  borderWidth: 1,
+  borderRadius: 3,
+}];
+
+{% if compare_first_roll_histogram %}
+frDatasets.push({
+  label: '{{ compare_player.username }}',
+  data: {{ compare_first_roll_histogram | tojson }},
+  backgroundColor: '{{ color2 }}88',
+  borderColor: '{{ color2 }}',
+  borderWidth: 1,
+  borderRadius: 3,
+});
+{% endif %}
+
 new Chart(document.getElementById('firstRollHistogram'), {
   type: 'bar',
-  data: {
-    labels: frLabels,
-    datasets: [{
-      label: 'First throws',
-      data: {{ first_roll_histogram | tojson }},
-      backgroundColor: 'rgba(136,192,240,0.6)',
-      borderColor: '#88c0f0',
-      borderWidth: 1,
-      borderRadius: 3,
-    }],
-  },
+  data: { labels: frLabels, datasets: frDatasets },
   options: {
     responsive: true,
     maintainAspectRatio: true,
     aspectRatio: 1.8,
-    plugins: { legend: { display: false } },
+    plugins: {
+      legend: {
+        labels: { color: '#b0c4d8', font: { size: 10 } },
+      },
+    },
     scales: {
       x: {
         title: { display: true, text: 'Pins', color: '#6a7d90' },

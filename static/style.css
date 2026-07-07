@@ -690,6 +690,27 @@ td {
 .spare { color: #f5c842; }
 .empty { opacity: 0.3; }
 
+.game-date {
+  font-size: 0.75rem;
+  color: #6a7d90;
+  margin-left: auto;
+}
+
+.practice-badge-sm {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.game-closed-rate {
+  font-size: 0.7rem;
+  color: #88c0f0;
+  font-weight: 600;
+}
+
+.rank-badge {
+  font-size: 1rem;
+}
+
 /* --- Session Cards (dashboard) --- */
 .session-card-link {
   text-decoration: none;
@@ -974,6 +995,21 @@ td {
 .practice-toggle:hover {
   border-color: #f5c842;
   color: #f5c842;
+}
+
+.compare-select {
+  background: #0f1923;
+  color: #e0e6ed;
+  border: 1px solid #3a5068;
+  border-radius: 6px;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+.compare-select:focus {
+  border-color: #f5c842;
 }
 
 /* --- Alert Info --- */

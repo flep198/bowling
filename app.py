@@ -451,19 +451,51 @@ def compute_histogram(scores, bins):
     return counts
 
 
-@app.route("/player/<int:user_id>/stats")
-@login_required
-def player_stats(user_id):
-    player = User.query.get_or_404(user_id)
-    games = Game.query.filter_by(user_id=player.id).order_by(Game.id.asc()).all()
-
+def _chart_data(user, include_practice):
+    q = Game.query.filter_by(user_id=user.id)
+    if not include_practice:
+        q = q.filter_by(practice=False)
+    games = q.order_by(Game.id.asc()).all()
+    score_history = [
+        {"score": g.total_score, "date": g.session.date.strftime("%b %d, %Y") if g.session else ""}
+        for g in games
+    ]
     scores = [g.total_score for g in games]
     all_first_rolls = []
     for g in games:
         if g.frames:
             for f in g.frames:
                 all_first_rolls.append(f.roll1)
+    score_bins = [
+        (0, 25), (26, 50), (51, 75), (76, 100),
+        (101, 125), (126, 150), (151, 175), (176, 200),
+        (201, 225), (226, 250), (251, 275), (276, 300),
+    ]
+    score_histogram = compute_histogram(scores, score_bins)
+    first_roll_bins = [(i, i) for i in range(11)]
+    first_roll_histogram = compute_histogram(all_first_rolls, first_roll_bins)
+    return {
+        "score_history": score_history,
+        "score_histogram": score_histogram,
+        "first_roll_histogram": first_roll_histogram,
+    }
 
+
+@app.route("/player/<int:user_id>/stats")
+@login_required
+def player_stats(user_id):
+    player = User.query.get_or_404(user_id)
+    include_practice = request.args.get("practice") == "1"
+    compare_id = request.args.get("compare_id", type=int)
+
+    cd = _chart_data(player, include_practice)
+
+    q = Game.query.filter_by(user_id=player.id)
+    if not include_practice:
+        q = q.filter_by(practice=False)
+    games = q.order_by(Game.id.asc()).all()
+
+    scores = [g.total_score for g in games]
     total_strikes = 0
     total_spares = 0
     total_frames = 0
@@ -473,29 +505,33 @@ def player_stats(user_id):
             total_strikes += s
             total_spares += sp
             total_frames += len(g.frames)
+    nsf = total_frames - total_strikes
+    closed = total_strikes + total_spares
 
     placements = {}
     for g in games:
         if g.rank:
             placements[g.rank] = placements.get(g.rank, 0) + 1
 
-    closed = total_strikes + total_spares
-    nsf = total_frames - total_strikes
+    best_game = max(games, key=lambda g: g.total_score) if games else None
+    best_closed_game = None
+    best_closed_rate = -1
+    for g in games:
+        if g.frames:
+            s, sp = frame_stats(g.frames)
+            rate = (s + sp) / len(g.frames)
+            if rate > best_closed_rate:
+                best_closed_rate = rate
+                best_closed_game = g
 
-    score_bins = [
-        (0, 25), (26, 50), (51, 75), (76, 100),
-        (101, 125), (126, 150), (151, 175), (176, 200),
-        (201, 225), (226, 250), (251, 275), (276, 300),
-    ]
-    score_histogram = compute_histogram(scores, score_bins)
+    compare_cd = None
+    compare_player = None
+    if compare_id and compare_id != user_id:
+        compare_player = User.query.get(compare_id)
+        if compare_player:
+            compare_cd = _chart_data(compare_player, include_practice)
 
-    first_roll_bins = [(i, i) for i in range(11)]
-    first_roll_histogram = compute_histogram(all_first_rolls, first_roll_bins)
-
-    score_history = [
-        {"score": g.total_score, "date": g.session.date.strftime("%b %d, %Y") if g.session else ""}
-        for g in games
-    ]
+    all_users = User.query.filter(User.id != user_id).order_by(User.username).all()
 
     avg = round(sum(scores) / len(scores), 1) if scores else 0
     median = round(statistics.median(scores), 1) if scores else 0
@@ -508,10 +544,20 @@ def player_stats(user_id):
     return render_template(
         "player_stats.html",
         player=player,
-        score_history=score_history,
-        score_histogram=score_histogram,
+        include_practice=include_practice,
+        score_history=cd["score_history"],
+        score_histogram=cd["score_histogram"],
         score_bin_labels=["0-25","26-50","51-75","76-100","101-125","126-150","151-175","176-200","201-225","226-250","251-275","276-300"],
-        first_roll_histogram=first_roll_histogram,
+        first_roll_histogram=cd["first_roll_histogram"],
+        best_game=best_game,
+        best_closed_game=best_closed_game,
+        best_closed_rate=best_closed_rate,
+        all_users=all_users,
+        compare_id=compare_id,
+        compare_player=compare_player,
+        compare_score_history=compare_cd["score_history"] if compare_cd else None,
+        compare_score_histogram=compare_cd["score_histogram"] if compare_cd else None,
+        compare_first_roll_histogram=compare_cd["first_roll_histogram"] if compare_cd else None,
         stats={
             "count": len(scores),
             "sessions": len(set(g.session_id for g in games)),
