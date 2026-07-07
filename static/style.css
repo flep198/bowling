@@ -142,6 +142,58 @@ h3 {
   color: #8a9db0;
 }
 
+/* ── Bowling ball animation ──────────────────────── */
+.ball-roll {
+  display: inline-block;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #3a3a4a, #1a1a2a 60%, #0a0a12);
+  vertical-align: middle;
+  margin-right: 0.35rem;
+  position: relative;
+  animation: ballBounce 0.6s ease-in-out infinite alternate;
+  box-shadow: inset 0 -2px 4px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.3);
+}
+.ball-roll::before {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  background: #e0e6ed;
+  border-radius: 50%;
+  top: 3px;
+  left: 5px;
+  opacity: 0.6;
+}
+.ball-roll::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #e0e6ed;
+  border-radius: 50%;
+  top: 6px;
+  left: 3px;
+  opacity: 0.4;
+}
+
+@keyframes ballBounce {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    transform: translateY(-4px) rotate(30deg);
+  }
+}
+
+.btn-primary .ball-roll {
+  animation-duration: 0.5s;
+}
+.btn-primary:hover .ball-roll {
+  animation-duration: 0.3s;
+}
+
 .auth-alt a {
   color: #f5c842;
   text-decoration: none;
