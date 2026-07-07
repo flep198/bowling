@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dash-header">
+  <h1 style="margin:0">📊 {{ player.username }}</h1>
+  <a href="{{ url_for('dashboard') }}" class="btn-outline">← Back to Dashboard</a>
+</div>
+
+{% if stats.count == 0 %}
+<p class="muted" style="text-align:center;padding:3rem">No games recorded yet.</p>
+{% else %}
+
+<div class="stat-grid">
+  <div class="stat-card"><span class="stat-label">Games</span><span class="stat-value">{{ stats.count }}</span></div>
+  <div class="stat-card"><span class="stat-label">Sessions</span><span class="stat-value">{{ stats.sessions }}</span></div>
+  <div class="stat-card"><span class="stat-label">Average</span><span class="stat-value">{{ stats.avg }}</span></div>
+  <div class="stat-card"><span class="stat-label">Median</span><span class="stat-value">{{ stats.median }}</span></div>
+  <div class="stat-card"><span class="stat-label">High</span><span class="stat-value good">{{ stats.high }}</span></div>
+  <div class="stat-card"><span class="stat-label">Low</span><span class="stat-value low">{{ stats.low }}</span></div>
+  <div class="stat-card"><span class="stat-label">Strike%</span><span class="stat-value">{{ stats.strike_pct }}%</span></div>
+  <div class="stat-card"><span class="stat-label">Spare%</span><span class="stat-value">{{ stats.spare_pct }}%</span></div>
+  <div class="stat-card"><span class="stat-label">Closed%</span><span class="stat-value">{{ stats.closed_pct }}%</span></div>
+  <div class="stat-card">
+    <span class="stat-label">Placements</span>
+    <span class="stat-value placements">
+      <span class="p1" title="1st">{{ stats.placements.get(1, 0) }}</span>
+      <span class="p2" title="2nd">{{ stats.placements.get(2, 0) }}</span>
+      <span class="p3" title="3rd">{{ stats.placements.get(3, 0) }}</span>
+    </span>
+  </div>
+</div>
+
+<h2>📈 Score Timeline</h2>
+<div class="chart-wrap">
+  <canvas id="scoreChart"></canvas>
+</div>
+
+<div class="chart-row">
+  <div class="chart-wrap">
+    <h3 class="chart-title">Score Distribution</h3>
+    <canvas id="scoreHistogram"></canvas>
+  </div>
+  <div class="chart-wrap">
+    <h3 class="chart-title">First Throw Results</h3>
+    <canvas id="firstRollHistogram"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+{% set color = '#f5c842' %}
+var scoreHistory = {{ score_history | tojson }};
+var labels = [];
+for (var i = 1; i <= scoreHistory.length; i++) labels.push(i);
+
+// ── Score Timeline ─────────────────────────────────
+new Chart(document.getElementById('scoreChart'), {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: '{{ player.username }}',
+      data: scoreHistory.map(function(s) { return s.score; }),
+      borderColor: '{{ color }}',
+      backgroundColor: '{{ color }}22',
+      pointBackgroundColor: '{{ color }}',
+      pointRadius: 4,
+      borderWidth: 2,
+      tension: 0.1,
+    }],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    aspectRatio: 2.5,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: function(items) {
+            var pt = scoreHistory[items[0].dataIndex];
+            return (pt ? pt.date : '') + ' — Game ' + items[0].label;
+          },
+        },
+      },
+    },
+    scales: {
+      x: {
+        title: { display: true, text: 'Game #', color: '#6a7d90' },
+        ticks: { color: '#6a7d90' },
+        grid: { color: '#2a3a4a' },
+      },
+      y: {
+        min: Math.max(0, Math.floor(Math.min.apply(null, scoreHistory.map(function(s){return s.score})) * 0.9)),
+        max: Math.ceil(Math.max.apply(null, scoreHistory.map(function(s){return s.score})) * 1.1),
+        title: { display: true, text: 'Score', color: '#6a7d90' },
+        ticks: { color: '#6a7d90' },
+        grid: { color: '#2a3a4a' },
+      },
+    },
+  },
+});
+
+// ── Score Histogram ────────────────────────────────
+var scoreBins = {{ score_bin_labels | tojson }};
+var scoreHist = {{ score_histogram | tojson }};
+new Chart(document.getElementById('scoreHistogram'), {
+  type: 'bar',
+  data: {
+    labels: scoreBins,
+    datasets: [{
+      label: 'Games',
+      data: scoreHist,
+      backgroundColor: 'rgba(245,200,66,0.6)',
+      borderColor: '#f5c842',
+      borderWidth: 1,
+      borderRadius: 3,
+    }],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    aspectRatio: 1.8,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        ticks: { color: '#6a7d90', font: { size: 9 } },
+        grid: { color: '#2a3a4a' },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: '#6a7d90', stepSize: 1 },
+        grid: { color: '#2a3a4a' },
+      },
+    },
+  },
+});
+
+// ── First Throw Histogram ──────────────────────────
+var frLabels = [];
+for (var i = 0; i <= 10; i++) frLabels.push(i);
+new Chart(document.getElementById('firstRollHistogram'), {
+  type: 'bar',
+  data: {
+    labels: frLabels,
+    datasets: [{
+      label: 'First throws',
+      data: {{ first_roll_histogram | tojson }},
+      backgroundColor: 'rgba(136,192,240,0.6)',
+      borderColor: '#88c0f0',
+      borderWidth: 1,
+      borderRadius: 3,
+    }],
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    aspectRatio: 1.8,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: {
+        title: { display: true, text: 'Pins', color: '#6a7d90' },
+        ticks: { color: '#6a7d90' },
+        grid: { color: '#2a3a4a' },
+      },
+      y: {
+        beginAtZero: true,
+        ticks: { color: '#6a7d90', stepSize: 1 },
+        grid: { color: '#2a3a4a' },
+      },
+    },
+  },
+});
+</script>
+{% endif %}
+{% endblock %}

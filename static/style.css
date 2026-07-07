@@ -273,6 +273,16 @@ td {
   white-space: nowrap;
 }
 
+.player-link {
+  color: #fff;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.player-link:hover {
+  color: #f5c842;
+  text-decoration: underline;
+}
+
 .me {
   background: rgba(245, 200, 66, 0.06);
 }
@@ -874,6 +884,64 @@ td {
   accent-color: #f5c842;
 }
 
+/* --- Player Stats --- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.stat-card {
+  background: #1a2736;
+  border: 1px solid #2a3a4a;
+  border-radius: 10px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.7rem;
+  color: #6a7d90;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.3rem;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-value.good { color: #6fcf97; }
+.stat-value.low { color: #eb5757; }
+
+.stat-value.placements {
+  font-size: 1rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.chart-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #b0c4d8;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 /* --- Score Chart --- */
 .chart-wrap {
   background: #1a2736;
@@ -1009,6 +1077,11 @@ code {
   .player-total span { font-size: 1.15rem; }
 
   .et-option { font-size: 0.78rem; padding: 0.4rem 0.7rem; }
+
+  .stat-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 0.35rem; }
+  .stat-card { padding: 0.5rem; }
+  .stat-value { font-size: 1.1rem; }
+  .chart-row { grid-template-columns: 1fr; }
 
   .session-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   .auth-card { margin: 1.5rem auto; padding: 1.2rem; }

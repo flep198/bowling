@@ -32,7 +32,7 @@
       <tr class="{% if p.user == current_user %}me{% endif %}">
         <td class="rank">{{ loop.index }}</td>
         <td class="name">
-          {{ p.user.username }}
+          <a href="{{ url_for('player_stats', user_id=p.user.id) }}" class="player-link">{{ p.user.username }}</a>
           {% if p.user == current_user %}<span class="badge">you</span>{% endif %}
         </td>
         <td>{{ p.stats.sessions }}</td>
@@ -167,7 +167,7 @@
   for (var i = 0; i < data.length; i++) {
     datasets.push({
       label: data[i].name,
-      data: data[i].scores,
+      data: data[i].scores.map(function(s) { return s.score; }),
       borderColor: data[i].color,
       backgroundColor: data[i].color + '22',
       pointBackgroundColor: data[i].color,
@@ -182,7 +182,7 @@
   var allScores = [];
   for (var i = 0; i < data.length; i++) {
     for (var j = 0; j < data[i].scores.length; j++) {
-      allScores.push(data[i].scores[j]);
+      allScores.push(data[i].scores[j].score);
     }
   }
   var dataMin = Math.min.apply(null, allScores);
@@ -205,7 +205,11 @@
         },
         tooltip: {
           callbacks: {
-            title: function(items) { return 'Game ' + items[0].label; },
+            title: function(items) {
+              var item = items[0];
+              var point = data[item.datasetIndex].scores[item.dataIndex];
+              return (point ? point.date : '') + ' — Game ' + item.label;
+            },
           },
         },
         zoom: {

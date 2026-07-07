@@ -1,6 +1,7 @@
 import os
 import shutil
 import logging
+import statistics
 from datetime import datetime, timedelta
 from flask import Flask, render_template, redirect, url_for, request, flash, send_file
 from flask_login import (
@@ -171,6 +172,13 @@ def compute_player_stats(user, include_practice=False):
         }
 
     nsf = total_frames - total_strikes
+    score_history = []
+    for g in reversed(games):
+        score_history.append({
+            "score": g.total_score,
+            "date": g.session.date.strftime("%b %d, %Y") if g.session else "",
+        })
+
     return {
         "count": len(all_scores),
         "avg": round(sum(all_scores) / len(all_scores), 1),
@@ -184,7 +192,7 @@ def compute_player_stats(user, include_practice=False):
         "closed_pct": round(closed / total_frames * 100, 1) if total_frames else 0,
         "last_five": last_five,
         "best_in_last_five": max(last_five_scores) if last_five_scores else 0,
-        "score_history": all_scores[::-1],
+        "score_history": score_history,
         "placements": placements,
         "sessions": len(set(g.session_id for g in games)),
     }
@@ -430,6 +438,95 @@ def dashboard():
         chart_data=chart_data,
         recent_sessions=recent_sessions,
         include_practice=include_practice,
+    )
+
+
+def compute_histogram(scores, bins):
+    counts = [0] * len(bins)
+    for s in scores:
+        for i, (lo, hi) in enumerate(bins):
+            if lo <= s <= hi:
+                counts[i] += 1
+                break
+    return counts
+
+
+@app.route("/player/<int:user_id>/stats")
+@login_required
+def player_stats(user_id):
+    player = User.query.get_or_404(user_id)
+    games = Game.query.filter_by(user_id=player.id).order_by(Game.id.asc()).all()
+
+    scores = [g.total_score for g in games]
+    all_first_rolls = []
+    for g in games:
+        if g.frames:
+            for f in g.frames:
+                all_first_rolls.append(f.roll1)
+
+    total_strikes = 0
+    total_spares = 0
+    total_frames = 0
+    for g in games:
+        if g.frames:
+            s, sp = frame_stats(g.frames)
+            total_strikes += s
+            total_spares += sp
+            total_frames += len(g.frames)
+
+    placements = {}
+    for g in games:
+        if g.rank:
+            placements[g.rank] = placements.get(g.rank, 0) + 1
+
+    closed = total_strikes + total_spares
+    nsf = total_frames - total_strikes
+
+    score_bins = [
+        (0, 25), (26, 50), (51, 75), (76, 100),
+        (101, 125), (126, 150), (151, 175), (176, 200),
+        (201, 225), (226, 250), (251, 275), (276, 300),
+    ]
+    score_histogram = compute_histogram(scores, score_bins)
+
+    first_roll_bins = [(i, i) for i in range(11)]
+    first_roll_histogram = compute_histogram(all_first_rolls, first_roll_bins)
+
+    score_history = [
+        {"score": g.total_score, "date": g.session.date.strftime("%b %d, %Y") if g.session else ""}
+        for g in games
+    ]
+
+    avg = round(sum(scores) / len(scores), 1) if scores else 0
+    median = round(statistics.median(scores), 1) if scores else 0
+    high = max(scores) if scores else 0
+    low = min(scores) if scores else 0
+    strike_pct = round(total_strikes / total_frames * 100, 1) if total_frames else 0
+    spare_pct = round(total_spares / nsf * 100, 1) if nsf else 0
+    closed_pct = round(closed / total_frames * 100, 1) if total_frames else 0
+
+    return render_template(
+        "player_stats.html",
+        player=player,
+        score_history=score_history,
+        score_histogram=score_histogram,
+        score_bin_labels=["0-25","26-50","51-75","76-100","101-125","126-150","151-175","176-200","201-225","226-250","251-275","276-300"],
+        first_roll_histogram=first_roll_histogram,
+        stats={
+            "count": len(scores),
+            "sessions": len(set(g.session_id for g in games)),
+            "avg": avg,
+            "median": median,
+            "high": high,
+            "low": low,
+            "strikes": total_strikes,
+            "spares": total_spares,
+            "strike_pct": strike_pct,
+            "spare_pct": spare_pct,
+            "closed_pct": closed_pct,
+            "closed": closed,
+            "placements": placements,
+        },
     )
 
 
