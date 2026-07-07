@@ -149,10 +149,13 @@ def compute_player_stats(user, include_practice=False):
 
     last_five = games[:5]
 
+    closed = total_strikes + total_spares
+
     if not all_scores:
         return {
             "count": 0, "avg": 0, "high": 0, "low": 0,
-            "strikes": 0, "spares": 0, "strike_pct": 0, "spare_pct": 0,
+            "strikes": 0, "spares": 0, "closed": 0,
+            "strike_pct": 0, "spare_pct": 0, "closed_pct": 0,
             "last_five": [], "placements": {}, "sessions": 0,
         }
 
@@ -164,8 +167,10 @@ def compute_player_stats(user, include_practice=False):
         "low": min(all_scores),
         "strikes": total_strikes,
         "spares": total_spares,
+        "closed": closed,
         "strike_pct": round(total_strikes / total_frames * 100, 1) if total_frames else 0,
         "spare_pct": round(total_spares / nsf * 100, 1) if nsf else 0,
+        "closed_pct": round(closed / total_frames * 100, 1) if total_frames else 0,
         "last_five": last_five,
         "placements": placements,
         "sessions": len(set(g.session_id for g in games)),
@@ -254,6 +259,68 @@ def register():
         flash(f"Account '{username}' created!", "success")
         return redirect(url_for("dashboard"))
     return render_template("register.html")
+
+
+# ── Admin: User Management ───────────────────────────────
+
+@app.route("/admin/users")
+@login_required
+def admin_users():
+    if not current_user.is_admin:
+        flash("Only the admin can manage users.", "danger")
+        return redirect(url_for("dashboard"))
+    users = User.query.order_by(User.username).all()
+    return render_template("admin_users.html", users=users)
+
+
+@app.route("/admin/users/<int:user_id>/edit", methods=["GET", "POST"])
+@login_required
+def admin_edit_user(user_id):
+    if not current_user.is_admin:
+        flash("Only the admin can edit users.", "danger")
+        return redirect(url_for("dashboard"))
+    user = User.query.get_or_404(user_id)
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        confirm = request.form.get("confirm_password", "")
+        is_admin = request.form.get("is_admin") == "on"
+
+        if not username:
+            flash("Username cannot be empty.", "danger")
+        elif username != user.username and User.query.filter_by(username=username).first():
+            flash("Username already taken.", "danger")
+        else:
+            user.username = username
+            user.is_admin = is_admin
+            if password:
+                if password != confirm:
+                    flash("Passwords do not match.", "danger")
+                    return render_template("edit_user.html", edit_user=user)
+                user.set_password(password)
+            db.session.commit()
+            flash(f"User '{username}' updated.", "success")
+            return redirect(url_for("admin_users"))
+    return render_template("edit_user.html", edit_user=user)
+
+
+@app.route("/admin/users/<int:user_id>/delete", methods=["GET", "POST"])
+@login_required
+def admin_delete_user(user_id):
+    if not current_user.is_admin:
+        flash("Only the admin can delete users.", "danger")
+        return redirect(url_for("dashboard"))
+    user = User.query.get_or_404(user_id)
+    if user.id == current_user.id:
+        flash("You cannot delete yourself.", "danger")
+        return redirect(url_for("admin_users"))
+    if request.method == "POST":
+        username = user.username
+        db.session.delete(user)
+        db.session.commit()
+        flash(f"User '{username}' deleted.", "success")
+        return redirect(url_for("admin_users"))
+    return render_template("delete_user.html", del_user=user)
 
 
 @app.route("/settings", methods=["GET", "POST"])
@@ -658,8 +725,10 @@ def server_error(e):
 
 
 with app.app_context():
+    db_exists = os.path.exists(DB_PATH)
     db.create_all()
-    seed_admin()
+    if not db_exists:
+        seed_admin()
     auto_backup()
 
 if __name__ == "__main__":

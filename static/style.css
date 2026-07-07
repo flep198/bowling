@@ -229,6 +229,20 @@ th {
   padding: 0.6rem 0.4rem;
   border-bottom: 1px solid #2a3a4a;
   white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+th[data-dir="asc"]::after {
+  content: " ▲";
+  font-size: 0.55rem;
+  color: #f5c842;
+}
+
+th[data-dir="desc"]::after {
+  content: " ▼";
+  font-size: 0.55rem;
+  color: #f5c842;
 }
 
 td {

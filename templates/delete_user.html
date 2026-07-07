@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-card">
+  <h2>Delete User</h2>
+  <p style="text-align:center;color:#b0c4d8;margin-bottom:1.5rem;">
+    Are you sure you want to delete <strong style="color:#fff;">{{ del_user.username }}</strong>?
+  </p>
+  <form method="POST">
+    <button type="submit" class="btn btn-primary" style="background:#eb5757;color:#fff;margin-top:0;">Yes, Delete</button>
+  </form>
+  <p style="margin-top:1rem;text-align:center;">
+    <a href="{{ url_for('admin_users') }}" style="color:#8a9db0;font-size:0.85rem;">← Cancel</a>
+  </p>
+</div>
+{% endblock %}

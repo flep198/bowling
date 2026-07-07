@@ -22,6 +22,7 @@
         <th>Spares</th>
         <th>Strike%</th>
         <th>Spare%</th>
+        <th>Closed%</th>
         <th title="1st / 2nd / 3rd">🥇🥈🥉</th>
         <th>Last 5</th>
       </tr>
@@ -43,6 +44,7 @@
         <td>{{ p.stats.spares }}</td>
         <td class="stat-pct">{{ p.stats.strike_pct }}%</td>
         <td class="stat-pct">{{ p.stats.spare_pct }}%</td>
+        <td class="stat-pct">{{ p.stats.closed_pct }}%</td>
         <td class="placements">
           {% set ns = p.stats.placements %}
           <span class="p1" title="1st">{{ ns.get(1, 0) }}</span>
@@ -58,7 +60,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="13" class="muted">No players yet.</td></tr>
+      <tr><td colspan="14" class="muted">No players yet.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -90,4 +92,47 @@
   <p class="muted">No sessions yet.</p>
   {% endfor %}
 </div>
+<script>
+(function(){
+  var table = document.querySelector('.leaderboard table');
+  if (!table) return;
+  var thead = table.querySelector('thead');
+  var tbody = table.querySelector('tbody');
+  var ths = thead.querySelectorAll('th');
+
+  [].forEach.call(ths, function(th, i){
+    th.addEventListener('click', function(){
+      var dir = th.getAttribute('data-dir') === 'asc' ? 'desc' : 'asc';
+      [].forEach.call(ths, function(t){ t.removeAttribute('data-dir'); });
+      th.setAttribute('data-dir', dir);
+
+      var rows = [].slice.call(tbody.querySelectorAll('tr'));
+      if (rows.length === 0) return;
+
+      var sortFn;
+      if (i === 0) {
+        sortFn = function(a, b){ return 0; };
+      } else if (i === 1) {
+        sortFn = function(a, b){
+          return dir === 'asc'
+            ? a.cells[i].textContent.trim().localeCompare(b.cells[i].textContent.trim())
+            : b.cells[i].textContent.trim().localeCompare(a.cells[i].textContent.trim());
+        };
+      } else {
+        sortFn = function(a, b){
+          var va = parseFloat(a.cells[i].textContent.trim()) || 0;
+          var vb = parseFloat(b.cells[i].textContent.trim()) || 0;
+          return dir === 'asc' ? va - vb : vb - va;
+        };
+      }
+
+      rows.sort(sortFn);
+      for (var r = 0; r < rows.length; r++) {
+        tbody.appendChild(rows[r]);
+        rows[r].cells[0].textContent = r + 1;
+      }
+    });
+  });
+})();
+</script>
 {% endblock %}
