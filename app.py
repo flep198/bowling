@@ -126,6 +126,15 @@ def frame_stats(frames):
     return strikes, spares
 
 
+def assign_ranks(entries):
+    entries.sort(key=lambda g: g.total_score, reverse=True)
+    for i, g in enumerate(entries):
+        if i > 0 and g.total_score == entries[i-1].total_score:
+            g.rank = entries[i-1].rank
+        else:
+            g.rank = i + 1
+
+
 def compute_player_stats(user, include_practice=False):
     q = Game.query.filter_by(user_id=user.id)
     if not include_practice:
@@ -148,6 +157,7 @@ def compute_player_stats(user, include_practice=False):
             placements[g.rank] = placements.get(g.rank, 0) + 1
 
     last_five = games[:5]
+    last_five_scores = [g.total_score for g in last_five]
 
     closed = total_strikes + total_spares
 
@@ -157,6 +167,7 @@ def compute_player_stats(user, include_practice=False):
             "strikes": 0, "spares": 0, "closed": 0,
             "strike_pct": 0, "spare_pct": 0, "closed_pct": 0,
             "last_five": [], "placements": {}, "sessions": 0,
+            "score_history": [],
         }
 
     nsf = total_frames - total_strikes
@@ -172,6 +183,8 @@ def compute_player_stats(user, include_practice=False):
         "spare_pct": round(total_spares / nsf * 100, 1) if nsf else 0,
         "closed_pct": round(closed / total_frames * 100, 1) if total_frames else 0,
         "last_five": last_five,
+        "best_in_last_five": max(last_five_scores) if last_five_scores else 0,
+        "score_history": all_scores[::-1],
         "placements": placements,
         "sessions": len(set(g.session_id for g in games)),
     }
@@ -401,9 +414,20 @@ def dashboard():
         ).limit(10).all()
     )
 
+    CHART_COLORS = ['#f5c842', '#6fcf97', '#eb5757', '#88c0f0', '#cd7f32', '#b0c4d8', '#e0b532', '#4a90d9', '#d94a8e', '#4ad9b5']
+    chart_data = []
+    for i, p in enumerate(players):
+        if p["stats"]["score_history"]:
+            chart_data.append({
+                "name": p["user"].username,
+                "scores": p["stats"]["score_history"],
+                "color": CHART_COLORS[i % len(CHART_COLORS)],
+            })
+
     return render_template(
         "dashboard.html",
         players=players,
+        chart_data=chart_data,
         recent_sessions=recent_sessions,
         include_practice=include_practice,
     )
@@ -432,8 +456,7 @@ def delete_game(game_id):
     remaining = Game.query.filter_by(session_id=session_id).order_by(
         Game.total_score.desc()
     ).all()
-    for idx, g in enumerate(remaining):
-        g.rank = idx + 1
+    assign_ranks(remaining)
 
     db.session.commit()
     flash("Game deleted. ✅", "success")
@@ -504,8 +527,7 @@ def edit_game(game_id):
         all_entries = Game.query.filter_by(session_id=game.session_id).order_by(
             Game.total_score.desc()
         ).all()
-        for idx, g in enumerate(all_entries):
-            g.rank = idx + 1
+        assign_ranks(all_entries)
 
         db.session.commit()
         flash("Game updated! ✅", "success")
@@ -640,9 +662,7 @@ def add_game():
                 game.total_score = bowling_score(full_frames)
                 entries.append(game)
 
-        entries.sort(key=lambda g: g.total_score, reverse=True)
-        for idx, g in enumerate(entries):
-            g.rank = idx + 1
+        assign_ranks(entries)
 
         db.session.commit()
         return redirect(url_for("view_session", session_id=session.id))
@@ -724,9 +744,18 @@ def server_error(e):
     return render_template("error.html", code=500, msg="Something went wrong"), 500
 
 
+def migrate_ranks():
+    sessions = GameSession.query.all()
+    for sess in sessions:
+        games = Game.query.filter_by(session_id=sess.id).all()
+        if games:
+            assign_ranks(games)
+    db.session.commit()
+
 with app.app_context():
     db_exists = os.path.exists(DB_PATH)
     db.create_all()
+    migrate_ranks()
     if not db_exists:
         seed_admin()
     auto_backup()

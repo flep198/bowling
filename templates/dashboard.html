@@ -53,7 +53,13 @@
         </td>
         <td class="last-five">
           {% for g in p.stats.last_five %}
-            <span class="score-chip {{ 'good' if g.total_score >= 200 else 'mid' if g.total_score >= 150 else '' }}">{{ g.total_score }}</span>
+            {% if g.total_score == p.stats.high and p.stats.high > 0 %}
+              <span class="score-chip good">{{ g.total_score }}</span>
+            {% elif g.total_score == p.stats.best_in_last_five and p.stats.last_five %}
+              <span class="score-chip mid">{{ g.total_score }}</span>
+            {% else %}
+              <span class="score-chip">{{ g.total_score }}</span>
+            {% endif %}
           {% else %}
             <span class="muted">—</span>
           {% endfor %}
@@ -64,6 +70,11 @@
       {% endfor %}
     </tbody>
   </table>
+</div>
+
+<h2>📈 Score History</h2>
+<div class="chart-wrap">
+  <canvas id="scoreChart"></canvas>
 </div>
 
 <h2>📅 Recent Sessions</h2>
@@ -132,6 +143,72 @@
         rows[r].cells[0].textContent = r + 1;
       }
     });
+  });
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  var data = {{ chart_data | tojson }};
+  var canvas = document.getElementById('scoreChart');
+  if (!canvas || data.length === 0) return;
+
+  var maxGames = 0;
+  for (var i = 0; i < data.length; i++) {
+    if (data[i].scores.length > maxGames) maxGames = data[i].scores.length;
+  }
+
+  var labels = [];
+  for (var i = 1; i <= maxGames; i++) labels.push(i);
+
+  var datasets = [];
+  for (var i = 0; i < data.length; i++) {
+    datasets.push({
+      label: data[i].name,
+      data: data[i].scores,
+      borderColor: data[i].color,
+      backgroundColor: data[i].color + '22',
+      pointBackgroundColor: data[i].color,
+      pointRadius: 3,
+      borderWidth: 2,
+      tension: 0.1,
+      spanGaps: true,
+    });
+  }
+
+  new Chart(canvas, {
+    type: 'line',
+    data: { labels: labels, datasets: datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 2.5,
+      plugins: {
+        legend: {
+          labels: { color: '#b0c4d8', font: { size: 12 } },
+        },
+        tooltip: {
+          callbacks: {
+            title: function(items) { return 'Game ' + items[0].label; },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: { display: true, text: 'Game #', color: '#6a7d90' },
+          ticks: { color: '#6a7d90' },
+          grid: { color: '#2a3a4a' },
+        },
+        y: {
+          min: 0,
+          max: 300,
+          title: { display: true, text: 'Score', color: '#6a7d90' },
+          ticks: { color: '#6a7d90' },
+          grid: { color: '#2a3a4a' },
+        },
+      },
+    },
   });
 })();
 </script>
