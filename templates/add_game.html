@@ -391,6 +391,21 @@ document.querySelectorAll(".roll-input").forEach(input => {
   input.addEventListener("input", function() { onRollChange(this); });
   input.addEventListener("change", function() { onRollChange(this); });
   input.addEventListener("focus", function() { this.select(); });
+  input.addEventListener("keydown", function(e) {
+    if (e.key === "ArrowRight" || e.key === "Enter") {
+      e.preventDefault();
+      const inputs = Array.from(document.querySelectorAll(".roll-input"))
+        .filter(el => !el.disabled && el.closest('.player-section')?.style.display !== 'none');
+      const idx = inputs.indexOf(this);
+      if (idx < inputs.length - 1) inputs[idx + 1].focus();
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      const inputs = Array.from(document.querySelectorAll(".roll-input"))
+        .filter(el => !el.disabled && el.closest('.player-section')?.style.display !== 'none');
+      const idx = inputs.indexOf(this);
+      if (idx > 0) inputs[idx - 1].focus();
+    }
+  });
 });
 
 // Init
