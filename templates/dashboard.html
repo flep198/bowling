@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dash-header">
+  <h1 style="margin:0">👑 Leaderboard</h1>
+  <a href="{{ url_for('dashboard', practice='0' if include_practice else '1') }}" class="practice-toggle">
+    {% if include_practice %}🙈 Hide practice{% else %}🏋️ Show practice{% endif %}
+  </a>
+</div>
+
+<div class="leaderboard">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Player</th>
+        <th>Sessions</th>
+        <th>Games</th>
+        <th>Average</th>
+        <th>High</th>
+        <th>Low</th>
+        <th>Strikes</th>
+        <th>Spares</th>
+        <th>Strike%</th>
+        <th>Spare%</th>
+        <th title="1st / 2nd / 3rd">🥇🥈🥉</th>
+        <th>Last 5</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in players %}
+      <tr class="{% if p.user == current_user %}me{% endif %}">
+        <td class="rank">{{ loop.index }}</td>
+        <td class="name">
+          {{ p.user.username }}
+          {% if p.user == current_user %}<span class="badge">you</span>{% endif %}
+        </td>
+        <td>{{ p.stats.sessions }}</td>
+        <td>{{ p.stats.count }}</td>
+        <td class="avg">{{ p.stats.avg }}</td>
+        <td class="high">{{ p.stats.high }}</td>
+        <td class="low">{{ p.stats.low }}</td>
+        <td>{{ p.stats.strikes }}</td>
+        <td>{{ p.stats.spares }}</td>
+        <td class="stat-pct">{{ p.stats.strike_pct }}%</td>
+        <td class="stat-pct">{{ p.stats.spare_pct }}%</td>
+        <td class="placements">
+          {% set ns = p.stats.placements %}
+          <span class="p1" title="1st">{{ ns.get(1, 0) }}</span>
+          <span class="p2" title="2nd">{{ ns.get(2, 0) }}</span>
+          <span class="p3" title="3rd">{{ ns.get(3, 0) }}</span>
+        </td>
+        <td class="last-five">
+          {% for g in p.stats.last_five %}
+            <span class="score-chip {{ 'good' if g.total_score >= 200 else 'mid' if g.total_score >= 150 else '' }}">{{ g.total_score }}</span>
+          {% else %}
+            <span class="muted">—</span>
+          {% endfor %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="13" class="muted">No players yet.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<h2>📅 Recent Sessions</h2>
+<div class="recent-games">
+  {% for sess in recent_sessions %}
+  <a href="{{ url_for('view_session', session_id=sess.id) }}" class="session-card-link">
+    <div class="session-card">
+      <div class="session-card-header">
+        <span class="session-date">{{ sess.date.strftime('%b %d, %Y') }}</span>
+        <span class="session-count">{{ sess.entries|length }} player{% if sess.entries|length != 1 %}s{% endif %}</span>
+      </div>
+      <div class="session-card-body">
+        {% for g in sess.entries %}
+        <div class="sc-entry rank-{{ g.rank }}">
+          <span class="sc-rank">
+            {% if g.rank == 1 %}👑{% elif g.rank == 2 %}🥈{% elif g.rank == 3 %}🥉{% else %}#{{ g.rank }}{% endif %}
+          </span>
+          <span class="sc-name">{{ g.player.username }}</span>
+          <span class="sc-score {{ 'good' if g.total_score >= 200 else 'mid' if g.total_score >= 150 else '' }}">{{ g.total_score }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </a>
+  {% else %}
+  <p class="muted">No sessions yet.</p>
+  {% endfor %}
+</div>
+{% endblock %}

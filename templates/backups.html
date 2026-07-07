@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>📦 Database Backups</h1>
+<p style="color:#8a9db0; margin-bottom:1rem;">
+  Backups are stored in the <code>backups/</code> folder. The last 30 are kept automatically.
+</p>
+
+{% if backups %}
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Date</th>
+      <th>Size</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for b in backups %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ b.label }}</td>
+      <td>{{ (b.size / 1024)|round(1) }} KB</td>
+      <td class="backup-actions">
+        <a href="{{ url_for('download_backup', filename=b.file) }}" class="btn-sm">⬇ Download</a>
+        <a href="{{ url_for('restore_backup', filename=b.file) }}"
+           class="btn-sm btn-danger"
+           onclick="return confirm('Restore this backup? Current data will be backed up first.')">
+          ↩ Restore
+        </a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No backups yet. <a href="{{ url_for('backup_now') }}">Create one now</a>.</p>
+{% endif %}
+{% endblock %}

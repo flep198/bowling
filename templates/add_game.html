@@ -1,0 +1,408 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>{% if edit_game %}✏️ Edit Game{% else %}➕ New Game Session{% endif %}</h2>
+  <form method="POST" class="session-form" id="gameForm" autocomplete="off"
+        action="{% if edit_game %}{{ url_for('edit_game', game_id=edit_game.id) }}{% else %}{{ url_for('add_game') }}{% endif %}">
+    <div class="form-group">
+      <label for="date">Date</label>
+      <input type="date" name="date" id="date" value="{{ today }}">
+    </div>
+
+    {% set edit_uid = edit_game.user_id if edit_game else none %}
+    {% set edit_has_frames = edit_game and edit_game.frames %}
+    {% set edit_mode = 'frame' if edit_has_frames else 'quick' %}
+    <div class="entry-toggle" id="entryToggle">
+      <label class="et-option {{ 'active' if not edit_game or edit_has_frames else '' }}" data-mode="frame">
+        <input type="radio" name="entry_mode" value="frame" {{ 'checked' if not edit_game or edit_has_frames else '' }} hidden>
+        <span class="et-icon">🎳</span>
+        <span class="et-text">Frame Entry</span>
+      </label>
+      <label class="et-option {{ 'active' if edit_game and not edit_has_frames else '' }}" data-mode="quick">
+        <input type="radio" name="entry_mode" value="quick" {{ 'checked' if edit_game and not edit_has_frames else '' }} hidden>
+        <span class="et-icon">⚡</span>
+        <span class="et-text">Quick Entry</span>
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label>Players</label>
+      <div class="player-checkboxes">
+        {% for u in users %}
+        <label class="player-check">
+          <input type="checkbox" name="player_ids" value="{{ u.id }}" class="player-toggle" data-uid="{{ u.id }}"
+                 {{ 'checked' if edit_game and u.id == edit_uid else '' }}
+                 {{ 'disabled' if edit_game else '' }}>
+          <span>{{ u.username }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="practice-check">
+      <label>
+        <input type="checkbox" name="practice" value="1" {{ 'checked' if edit_game and edit_game.practice else '' }}>
+        <span>🏋️ Practice game (excluded from stats by default)</span>
+      </label>
+    </div>
+
+    <div id="quickSections" style="display:{{ 'block' if edit_game and not edit_has_frames else 'none' }}">
+      {% for u in users %}
+      {% set qval = edit_game.total_score if edit_game and u.id == edit_uid and not edit_has_frames else '' %}
+      <div class="quick-player-section" id="quick-section-{{ u.id }}"
+           style="display:{{ 'block' if edit_game and u.id == edit_uid else 'none' }}" data-uid="{{ u.id }}">
+        <label class="quick-label">{{ u.username }}</label>
+        <input type="number" name="f_{{ u.id }}_score" class="quick-score" min="0" max="300" value="{{ qval }}"
+               placeholder="0–300" data-uid="{{ u.id }}">
+      </div>
+      {% endfor %}
+    </div>
+
+    <div id="frameSections">
+      {% for u in users %}
+      {% set fsection_show = 'block' if not edit_game or (edit_game and u.id == edit_uid) else 'none' %}
+      <div class="player-section" id="section-{{ u.id }}"
+           style="display:{{ fsection_show if not edit_game or edit_uid != u.id else 'block' }}" data-uid="{{ u.id }}">
+        <h3 class="section-title">{{ u.username }}</h3>
+        <div class="frames-grid">
+          {% for i in range(1, 11) %}
+          {% set f = edit_game.frames[i-1] if edit_game and u.id == edit_uid and edit_game.frames else none %}
+          <div class="frame-box" data-frame="{{ i }}">
+            <div class="frame-label">{{ i }}</div>
+            <div class="frame-rolls">
+              <input type="number" name="f{{ u.id }}_{{ i }}_r1" id="f{{ u.id }}_{{ i }}_r1"
+                     class="roll-input r1" min="0" max="10" value="{{ f.roll1 if f else '' }}"
+                     data-uid="{{ u.id }}" data-frame="{{ i }}" data-roll="1" placeholder="-">
+              <input type="number" name="f{{ u.id }}_{{ i }}_r2" id="f{{ u.id }}_{{ i }}_r2"
+                     class="roll-input r2" min="0" max="10" value="{{ f.roll2 if f and f.roll2 is not none else '' }}"
+                     data-uid="{{ u.id }}" data-frame="{{ i }}" data-roll="2" placeholder="-">
+              {% if i == 10 %}
+              <input type="number" name="f{{ u.id }}_{{ i }}_r3" id="f{{ u.id }}_{{ i }}_r3"
+                     class="roll-input r3" min="0" max="10" value="{{ f.roll3 if f and f.roll3 is not none else '' }}"
+                     data-uid="{{ u.id }}" data-frame="{{ i }}" data-roll="3" placeholder="-">
+              {% endif %}
+            </div>
+            <div class="frame-score" id="score-{{ u.id }}-{{ i }}"></div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="player-total" id="total-{{ u.id }}">Total: <span>0</span></div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="session-preview" id="sessionPreview" style="display:none">
+      <h3>Session Leaderboard</h3>
+      <div id="sessionRanks"></div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Session</button>
+  </form>
+</div>
+
+<script>
+const USERS = {{ users | map(attribute='id') | list | tojson }};
+
+// ── Mode toggle ────────────────────────────────────────
+document.querySelectorAll(".et-option").forEach(el => {
+  el.addEventListener("click", function() {
+    document.querySelectorAll(".et-option").forEach(o => o.classList.remove("active"));
+    this.classList.add("active");
+    const mode = this.dataset.mode;
+    document.getElementById("frameSections").style.display = mode === "frame" ? "block" : "none";
+    document.getElementById("quickSections").style.display = mode === "quick" ? "block" : "none";
+    updateSessionPreview();
+  });
+});
+
+// ── Roll input helpers ─────────────────────────────────
+function getVal(uid, frame, roll) {
+  const el = document.getElementById(`f${uid}_${frame}_r${roll}`);
+  if (!el || el.disabled || el.value === "") return null;
+  const v = parseInt(el.value);
+  return isNaN(v) ? null : v;
+}
+
+function setDisabled(el, disabled) {
+  if (disabled) {
+    el.disabled = true;
+    el.value = "";
+    el.classList.add("dimmed");
+  } else {
+    el.disabled = false;
+    el.classList.remove("dimmed");
+  }
+}
+
+// ── Per-player frame update ────────────────────────────
+function updatePlayerFrame(uid, frame) {
+  const r1 = document.getElementById(`f${uid}_${frame}_r1`);
+  const r2 = document.getElementById(`f${uid}_${frame}_r2`);
+  if (!r1 || !r2) return;
+  const v1 = parseInt(r1.value);
+  const isStrike = v1 === 10;
+
+  if (frame < 10) {
+    if (isStrike) {
+      setDisabled(r2, true);
+      r2.placeholder = "X";
+    } else {
+      setDisabled(r2, false);
+      if (!isNaN(v1) && v1 >= 0) {
+        r2.max = 10 - v1;
+        if (r2.value && parseInt(r2.value) > 10 - v1) r2.value = "";
+      } else {
+        r2.max = 10;
+      }
+      const v2 = parseInt(r2.value);
+      if (!isNaN(v1) && !isNaN(v2) && v1 + v2 === 10) {
+        r2.placeholder = "/";
+      } else {
+        r2.placeholder = "-";
+      }
+    }
+  } else {
+    const r3 = document.getElementById(`f${uid}_${frame}_r3`);
+    const v1v = getVal(uid, 10, 1);
+    const v2v = getVal(uid, 10, 2);
+
+    if (v1v === 10) {
+      setDisabled(r2, false);
+      r2.max = 10;
+      r2.placeholder = "-";
+      if (v2v !== null) {
+        setDisabled(r3, false);
+        r3.max = 10;
+        r3.placeholder = v2v === 10 ? "X" : "-";
+      }
+    } else if (v1v !== null && v1v < 10) {
+      setDisabled(r2, false);
+      r2.max = 10 - v1v;
+      r2.placeholder = "-";
+      if (v2v !== null && v1v + v2v >= 10) {
+        setDisabled(r3, false);
+        r3.max = 10;
+        r3.placeholder = "/";
+      } else if (v2v !== null && v1v + v2v < 10) {
+        setDisabled(r3, true);
+      }
+    }
+    updateSymbols(uid, frame);
+  }
+  recalculatePlayer(uid);
+  updateSessionPreview();
+}
+
+function updateSymbols(uid, frame) {
+  const r1 = document.getElementById(`f${uid}_${frame}_r1`);
+  const r2 = document.getElementById(`f${uid}_${frame}_r2`);
+  if (!r1) return;
+  if (r1.value === "10") r1.placeholder = "X";
+  if (frame === 10 && r2) {
+    const v1 = getVal(uid, 10, 1);
+    const v2 = getVal(uid, 10, 2);
+    if (r2.value === "10" && v1 === 10) r2.placeholder = "X";
+    else if (v1 !== 10 && !isNaN(v1) && !isNaN(v2) && v1 + v2 === 10) r2.placeholder = "/";
+    const r3 = document.getElementById(`f${uid}_${frame}_r3`);
+    if (r3) {
+      const v3 = getVal(uid, 10, 3);
+      if (v3 === 10 && v2 === 10) r3.placeholder = "X";
+      else if (v3 !== null && v2 !== null && v2 + v3 === 10 && v2 !== 10) r3.placeholder = "/";
+    }
+  }
+}
+
+// ── Partial bowling score calculator ───────────────────
+function tryScoreFrame(frames, i) {
+  const f = frames[i];
+  if (i < 9) {
+    if (f.r1 === 10) {
+      if (i + 1 >= frames.length) return null;
+      const nf = frames[i + 1];
+      if (nf.r2 == null && nf.r1 !== 10) return null;
+      let bonus = nf.r1;
+      if (nf.r1 === 10) {
+        if (i + 1 < 9) {
+          if (i + 2 >= frames.length) return null;
+          if (frames[i + 2].r1 == null) return null;
+          bonus += frames[i + 2].r1;
+        } else {
+          if (nf.r2 == null) return null;
+          bonus += nf.r2;
+        }
+      } else {
+        if (nf.r2 == null) return null;
+        bonus += nf.r2;
+      }
+      return 10 + bonus;
+    }
+    if (f.r2 == null) return null;
+    if (f.r1 + f.r2 === 10) {
+      if (i + 1 >= frames.length) return null;
+      return 10 + frames[i + 1].r1;
+    }
+    return f.r1 + f.r2;
+  } else {
+    if (f.r1 === 10) {
+      if (f.r2 == null) return null;
+      if (f.r1 + f.r2 >= 10 && f.r3 == null) return null;
+      return f.r1 + f.r2 + (f.r3 || 0);
+    }
+    if (f.r2 == null) return null;
+    if (f.r1 + f.r2 >= 10) {
+      if (f.r3 == null) return null;
+    }
+    return f.r1 + f.r2 + (f.r3 || 0);
+  }
+}
+
+function computePartialScore(uid) {
+  const frames = [];
+  for (let i = 1; i <= 10; i++) {
+    const r1 = getVal(uid, i, 1);
+    if (r1 === null) break;
+    const r2 = getVal(uid, i, 2);
+    const r3 = getVal(uid, i, 3);
+    frames.push({ r1, r2, r3 });
+  }
+
+  let total = 0;
+  for (let i = 0; i < frames.length; i++) {
+    const result = tryScoreFrame(frames, i);
+    if (result === null) {
+      const f = frames[i];
+      let raw = f.r1;
+      if (f.r2 !== null) raw += f.r2;
+      if (f.r3 !== null) raw += f.r3;
+      total += raw;
+    } else {
+      total += result;
+    }
+    const el = document.getElementById(`score-${uid}-${i + 1}`);
+    if (el) el.textContent = total;
+  }
+  for (let i = frames.length; i < 10; i++) {
+    const el = document.getElementById(`score-${uid}-${i + 1}`);
+    if (el) el.textContent = "";
+  }
+  return total;
+}
+
+function recalculatePlayer(uid) {
+  const total = computePartialScore(uid);
+  const el = document.getElementById(`total-${uid}`);
+  if (el) {
+    el.querySelector("span").textContent = total;
+    el.className = "player-total" +
+      (total >= 200 ? " good" : total >= 150 ? " mid" : total > 0 ? " low" : "");
+  }
+}
+
+// ── Session preview ────────────────────────────────────
+function updateSessionPreview() {
+  const preview = document.getElementById("sessionPreview");
+  const ranksDiv = document.getElementById("sessionRanks");
+  const entries = [];
+  const mode = document.querySelector(".et-option.active").dataset.mode;
+
+  if (mode === "frame") {
+    document.querySelectorAll(".player-section").forEach(section => {
+      if (section.style.display === "none") return;
+      const uid = parseInt(section.dataset.uid);
+      const nameEl = section.querySelector(".section-title");
+      const totalEl = document.getElementById(`total-${uid}`);
+      if (!totalEl) return;
+      const total = parseInt(totalEl.querySelector("span").textContent) || 0;
+      entries.push({ uid, name: nameEl.textContent, total });
+    });
+  } else {
+    document.querySelectorAll(".quick-player-section").forEach(section => {
+      if (section.style.display === "none") return;
+      const uid = parseInt(section.dataset.uid);
+      const name = section.querySelector(".quick-label").textContent;
+      const input = section.querySelector(".quick-score");
+      const val = parseInt(input.value);
+      const total = !isNaN(val) ? Math.max(0, Math.min(300, val)) : 0;
+      entries.push({ uid, name, total });
+    });
+  }
+
+  if (entries.length === 0) {
+    preview.style.display = "none";
+    return;
+  }
+  preview.style.display = "block";
+  entries.sort((a, b) => b.total - a.total);
+
+  let html = '<div class="session-ranks">';
+  entries.forEach((e, idx) => {
+    const rank = idx + 1;
+    const medal = rank === 1 ? "👑" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
+    html += `<div class="sr-entry rank-${rank}">
+      <span class="sr-rank">${medal}</span>
+      <span class="sr-name">${e.name}</span>
+      <span class="sr-score">${e.total}</span>
+    </div>`;
+  });
+  html += "</div>";
+  ranksDiv.innerHTML = html;
+}
+
+// ── Player toggle (frame mode) ─────────────────────────
+document.querySelectorAll(".player-toggle").forEach(cb => {
+  cb.addEventListener("change", function() {
+    const uid = this.dataset.uid;
+    const section = document.getElementById(`section-${uid}`);
+    const qsection = document.getElementById(`quick-section-${uid}`);
+    if (section) section.style.display = this.checked ? "block" : "none";
+    if (qsection) qsection.style.display = this.checked ? "block" : "none";
+    updateSessionPreview();
+  });
+});
+
+// ── Quick score input ──────────────────────────────────
+document.querySelectorAll(".quick-score").forEach(input => {
+  function updateQuick() {
+    let val = parseInt(input.value);
+    if (input.value !== "" && !isNaN(val)) {
+      if (val < 0) input.value = 0;
+      else if (val > 300) input.value = 300;
+    }
+    updateSessionPreview();
+  }
+  input.addEventListener("input", updateQuick);
+  input.addEventListener("change", updateQuick);
+});
+
+// ── Frame input events ─────────────────────────────────
+function onRollChange(input) {
+  let val = parseInt(input.value);
+  const max = parseInt(input.max);
+  if (input.value !== "" && !isNaN(val)) {
+    if (val < 0) input.value = 0;
+    else if (val > max) input.value = max;
+  }
+  const uid = parseInt(input.dataset.uid);
+  const frame = parseInt(input.dataset.frame);
+  updatePlayerFrame(uid, frame);
+}
+
+document.querySelectorAll(".roll-input").forEach(input => {
+  input.addEventListener("input", function() { onRollChange(this); });
+  input.addEventListener("change", function() { onRollChange(this); });
+  input.addEventListener("focus", function() { this.select(); });
+});
+
+// Init
+USERS.forEach(uid => {
+  for (let i = 1; i <= 10; i++) updatePlayerFrame(uid, i);
+});
+// In edit mode, trigger full recalculation for the edited player
+{% if edit_game %}
+const editUid = {{ edit_game.user_id }};
+for (let i = 1; i <= 10; i++) updatePlayerFrame(editUid, i);
+document.getElementById("section-{{ edit_game.user_id }}").style.display = "block";
+updateSessionPreview();
+{% endif %}
+</script>
+{% endblock %}

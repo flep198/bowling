@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="session-header">
+  <h1>👑🎳 Session &mdash; {{ session.date.strftime('%b %d, %Y') }}</h1>
+  <div class="session-header-actions">
+    <a href="{{ url_for('dashboard') }}" class="btn-outline">&larr; Dashboard</a>
+  </div>
+</div>
+
+<div class="session-podium">
+  {% for g in session.entries %}
+  <div class="podium-entry rank-{{ g.rank }}">
+    <div class="podium-rank">
+      {% if g.rank == 1 %}👑{% elif g.rank == 2 %}🥈{% elif g.rank == 3 %}🥉{% else %}#{{ g.rank }}{% endif %}
+    </div>
+    <div class="podium-name">{{ g.player.username }}</div>
+    <div class="podium-score {{ 'good' if g.total_score >= 200 else 'mid' if g.total_score >= 150 else '' }}">{{ g.total_score }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+{% for g in session.entries %}
+<div class="game-card">
+  <div class="game-header">
+    <span class="game-rank-badge rank-{{ g.rank }}">{% if g.rank == 1 %}👑{% elif g.rank == 2 %}🥈{% elif g.rank == 3 %}🥉{% endif %}</span>
+    <span class="game-player">{{ g.player.username }}</span>
+    <span class="game-total {{ 'good' if g.total_score >= 200 else 'mid' if g.total_score >= 150 else '' }}">{{ g.total_score }}</span>
+    <div class="game-actions">
+      <a href="{{ url_for('edit_game', game_id=g.id) }}" class="btn-sm" title="Edit">✏️</a>
+      <form method="POST" action="{{ url_for('delete_game', game_id=g.id) }}" style="display:inline"
+            onsubmit="return confirm('Delete this game for {{ g.player.username }}?')">
+        <button type="submit" class="btn-sm btn-danger" title="Delete">🗑️</button>
+      </form>
+    </div>
+  </div>
+  {% if g.practice %}
+  <div class="practice-badge">🏋️ Practice</div>
+  {% endif %}
+  {% if g.frames %}
+  <div class="game-frames">
+    {% for f in g.frames %}
+    <div class="frame-chip">
+      <span class="fc-label">{{ f.frame }}</span>
+      <span class="fc-rolls">
+        {% if f.roll1 == 10 %}<span class="strike">X</span>
+        {% else %}<span>{{ f.roll1 }}</span>{% endif %}
+
+        {% if f.frame < 10 %}
+          {% if f.roll1 == 10 %}<span class="empty">-</span>
+          {% elif f.roll2 is not none and f.roll1 + f.roll2 == 10 %}<span class="spare">/</span>
+          {% elif f.roll2 is not none %}<span>{{ f.roll2 }}</span>{% endif %}
+        {% else %}
+          {% if f.roll2 is not none and f.roll1 != 10 and f.roll1 + f.roll2 == 10 %}<span class="spare">/</span>
+          {% elif f.roll2 is not none and f.roll1 == 10 and f.roll2 == 10 %}<span class="strike">X</span>
+          {% elif f.roll2 is not none %}<span>{{ f.roll2 }}</span>{% endif %}
+          {% if f.roll3 is not none and f.roll3 == 10 %}<span class="strike">X</span>
+          {% elif f.roll3 is not none and f.roll2 is not none and f.roll2 + f.roll3 == 10 and f.roll2 != 10 %}<span class="spare">/</span>
+          {% elif f.roll3 is not none %}<span>{{ f.roll3 }}</span>{% endif %}
+        {% endif %}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+{% endblock %}
