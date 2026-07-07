@@ -53,10 +53,10 @@
         </td>
         <td class="last-five">
           {% for g in p.stats.last_five %}
-            {% if g.total_score == p.stats.high and p.stats.high > 0 %}
-              <span class="score-chip good">{{ g.total_score }}</span>
-            {% elif g.total_score == p.stats.best_in_last_five and p.stats.last_five %}
+            {% if g.rank == 1 %}
               <span class="score-chip mid">{{ g.total_score }}</span>
+            {% elif g.total_score == p.stats.high and p.stats.high > 0 %}
+              <span class="score-chip good">{{ g.total_score }}</span>
             {% else %}
               <span class="score-chip">{{ g.total_score }}</span>
             {% endif %}
