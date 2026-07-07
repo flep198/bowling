@@ -6,13 +6,15 @@ A bowling score tracker for you and your friends. Account-based, multi-player se
 
 - **Account system** — admin creates accounts for players; each player can change their own username/password
 - **Frame-by-frame scoring** — enter rolls for all 10 frames with automatic correct scoring (strikes, spares, bonus calculation)
-- **Quick entry** — skip the frames and just enter the final score when you're lazy
+- **Quick entry** — skip the frames and just enter the final score
 - **Multi-player sessions** — add multiple players per session; ranks are calculated automatically
-- **Statistics** — per-player averages, high/low games, strike/spare rates, placement history (1st/2nd/3rd)
-- **Practice games** — mark games as practice to exclude them from stats (toggle on/off)
+- **Dashboard** — leaderboard table with averages, high/low, strike/spare/closed rates, gutter balls, placements, and last 5 scores; sortable columns
+- **Score history chart** — per-player score timeline (line chart) with dynamic Y-range, zoom/pan, and date tooltips
+- **Player statistics page** — per-player deep dive with score timeline, score distribution histogram, first-throw histogram, best game / best closing rate panels, and compare mode (overlay another player's data on all charts)
+- **Practice games** — mark games as practice to exclude them from stats and recent sessions (toggle on/off)
 - **Edit & delete** — fix mistakes by editing or deleting any game
 - **Backup & restore** — automatic daily backups, manual backup/restore via the UI
-- **Mobile-friendly** — works on phones and tablets
+- **Mobile-friendly** — responsive design with burger menu navigation; works on phones and tablets
 
 ## Quick start
 
@@ -43,5 +45,5 @@ gunicorn wsgi:app -b 0.0.0.0:5000 --workers=2
 
 - Flask + Flask-Login + Flask-SQLAlchemy
 - SQLite
-- Vanilla JS (no framework)
+- Vanilla JS + Chart.js + chartjs-plugin-zoom
 - Gunicorn
