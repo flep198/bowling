@@ -13,7 +13,6 @@
       <tr>
         <th>#</th>
         <th>Player</th>
-        <th>Sessions</th>
         <th>Games</th>
         <th>Average</th>
         <th>High</th>
@@ -36,7 +35,6 @@
           <a href="{{ url_for('player_stats', user_id=p.user.id) }}" class="player-link">{{ p.user.username }}</a>
           {% if p.user == current_user %}<span class="badge">you</span>{% endif %}
         </td>
-        <td>{{ p.stats.sessions }}</td>
         <td>{{ p.stats.count }}</td>
         <td class="avg">{{ p.stats.avg }}</td>
         <td class="high">{{ p.stats.high }}</td>
