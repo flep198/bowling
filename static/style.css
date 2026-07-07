@@ -246,9 +246,9 @@ th[data-dir="desc"]::after {
 }
 
 td {
-  padding: 0.6rem 0.4rem;
+  padding: 0.5rem 0.3rem;
   border-bottom: 1px solid #202e3c;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }
 
 .leaderboard {
@@ -261,10 +261,13 @@ td {
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #2a3a4a;
+  font-size: 0.75rem;
 }
 
-.leaderboard th:first-child, .leaderboard td:first-child { padding-left: 1rem; }
-.leaderboard th:last-child, .leaderboard td:last-child { padding-right: 1rem; }
+.leaderboard th:first-child, .leaderboard td:first-child { padding-left: 0.6rem; }
+.leaderboard th:last-child, .leaderboard td:last-child { padding-right: 0.6rem; }
+.leaderboard th, .leaderboard td { padding: 0.4rem 0.25rem; white-space: nowrap; }
+.leaderboard th { font-size: 0.65rem; }
 
 .rank {
   font-weight: 700;
@@ -1039,12 +1042,12 @@ code {
   .card { padding: 1rem; border-radius: 10px; }
 
   /* Nav */
-  .nav-inner { height: auto; padding: 0.5rem 0; flex-wrap: wrap; gap: 0.4rem; }
-  .brand { font-size: 1rem; white-space: normal; }
-  .nav-links { gap: 0.5rem; flex-wrap: wrap; }
-  .nav-links a { font-size: 0.78rem; }
-  .nav-user { font-size: 0.78rem; }
-  .btn-outline { padding: 0.25rem 0.6rem; font-size: 0.78rem; }
+  .nav-inner { height: 56px; padding: 0; gap: 0.5rem; }
+  .brand { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+  .nav-links { gap: 0.4rem; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0.25rem 0; }
+  .nav-links a { font-size: 0.75rem; white-space: nowrap; }
+  .nav-user { font-size: 0.75rem; flex-shrink: 0; }
+  .btn-outline { padding: 0.2rem 0.5rem; font-size: 0.75rem; white-space: nowrap; flex-shrink: 0; }
 
   /* Frames grid — scroll horizontally instead of wrapping */
   .frames-grid {
@@ -1072,7 +1075,11 @@ code {
   .leaderboard th:nth-child(10),
   .leaderboard td:nth-child(10),
   .leaderboard th:nth-child(11),
-  .leaderboard td:nth-child(11) { display: none; }
+  .leaderboard td:nth-child(11),
+  .leaderboard th:nth-child(12),
+  .leaderboard td:nth-child(12),
+  .leaderboard th:nth-child(13),
+  .leaderboard td:nth-child(13) { display: none; }
 
   /* Session podium */
   .session-podium { flex-direction: column; align-items: stretch; gap: 0.5rem; }

@@ -192,13 +192,14 @@ timelineDatasets.push({
 });
 {% endif %}
 
+var scoreAr = window.innerWidth < 600 ? 1.3 : window.innerWidth < 900 ? 1.8 : 2.5;
 new Chart(document.getElementById('scoreChart'), {
   type: 'line',
   data: { labels: labels, datasets: timelineDatasets },
   options: {
     responsive: true,
     maintainAspectRatio: true,
-    aspectRatio: 2.5,
+    aspectRatio: scoreAr,
     plugins: {
       legend: {
         labels: { color: '#b0c4d8', font: { size: 11 } },
@@ -272,13 +273,14 @@ histDatasets.push({
 });
 {% endif %}
 
+var histAr = window.innerWidth < 600 ? 1.1 : 1.8;
 new Chart(document.getElementById('scoreHistogram'), {
   type: 'bar',
   data: { labels: filteredBins, datasets: histDatasets },
   options: {
     responsive: true,
     maintainAspectRatio: true,
-    aspectRatio: 1.8,
+    aspectRatio: histAr,
     plugins: {
       legend: {
         labels: { color: '#b0c4d8', font: { size: 10 } },
@@ -329,7 +331,7 @@ new Chart(document.getElementById('firstRollHistogram'), {
   options: {
     responsive: true,
     maintainAspectRatio: true,
-    aspectRatio: 1.8,
+    aspectRatio: histAr,
     plugins: {
       legend: {
         labels: { color: '#b0c4d8', font: { size: 10 } },

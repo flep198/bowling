@@ -194,13 +194,14 @@
   var yMin = Math.max(0, Math.floor(dataMin - buffer));
   var yMax = Math.ceil(dataMax + buffer);
 
+  var ar = window.innerWidth < 600 ? 1.3 : window.innerWidth < 900 ? 1.8 : 2.5;
   var chart = new Chart(canvas, {
     type: 'line',
     data: { labels: labels, datasets: datasets },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      aspectRatio: 2.5,
+      aspectRatio: ar,
       plugins: {
         legend: {
           labels: { color: '#b0c4d8', font: { size: 12 } },
