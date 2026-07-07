@@ -7,6 +7,14 @@
   </a>
 </div>
 
+{% if reigning_champion %}
+<div class="champion-banner">
+  👑 <a href="{{ url_for('player_stats', user_id=reigning_champion_id) }}" class="champion-link">{{ reigning_champion }}</a>
+  is the reigning champion —
+  <strong>{{ consecutive_wins }}</strong> consecutive win{% if consecutive_wins != 1 %}s{% endif %}!
+</div>
+{% endif %}
+
 <div class="leaderboard">
   <table>
     <thead>

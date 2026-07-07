@@ -1050,6 +1050,29 @@ td {
   margin-bottom: 0.5rem;
 }
 
+/* --- Reigning Champion Banner --- */
+.champion-banner {
+  background: linear-gradient(135deg, #1a2a1a, #2a3a1a);
+  border: 1px solid #f5c84244;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #e0e6ed;
+}
+.champion-banner strong {
+  color: #f5c842;
+}
+.champion-link {
+  color: #f5c842;
+  text-decoration: none;
+  font-weight: 700;
+}
+.champion-link:hover {
+  text-decoration: underline;
+}
+
 /* --- Dashboard Header --- */
 .dash-header {
   display: flex;

@@ -38,6 +38,17 @@
       <span class="p3" title="3rd">{{ stats.placements.get(3, 0) }}</span>
     </span>
   </div>
+  <div class="stat-card">
+    <span class="stat-label">Best Strike Streak</span>
+    <span class="stat-value">
+      {% set streak_labels = {1:"Strike",2:"Double",3:"Turkey",4:"Four Bagger",5:"Five Bagger",6:"Six Bagger",7:"Seven Bagger",8:"Eight Bagger",9:"Nine Bagger",10:"Perfect Game"} %}
+      {% if stats.best_strike_streak >= 2 %}{{ streak_labels.get(stats.best_strike_streak, stats.best_strike_streak ~ " Bagger") }}{% else %}—{% endif %}
+    </span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">Longest Win Streak</span>
+    <span class="stat-value">{{ stats.longest_win_streak if stats.longest_win_streak > 0 else "—" }}</span>
+  </div>
 </div>
 
 <div class="chart-row">

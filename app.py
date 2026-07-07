@@ -127,6 +127,41 @@ def frame_stats(frames):
     return strikes, spares
 
 
+STREAK_LABELS = {
+    1: "Strike", 2: "Double", 3: "Turkey",
+    4: "Four Bagger", 5: "Five Bagger", 6: "Six Bagger",
+    7: "Seven Bagger", 8: "Eight Bagger", 9: "Nine Bagger",
+    10: "Perfect Game",
+}
+
+def best_strike_streak_in_game(frames):
+    best = 0
+    current = 0
+    for f in frames:
+        if f.roll1 == 10:
+            current += 1
+            if current > best:
+                best = current
+        else:
+            current = 0
+    return best
+
+def longest_winning_streak(user_id, include_practice=False):
+    q = Game.query.filter_by(user_id=user_id)
+    if not include_practice:
+        q = q.filter_by(practice=False)
+    games = q.order_by(Game.id.asc()).all()
+    best_streak = 0
+    current_streak = 0
+    for g in games:
+        if g.rank == 1:
+            current_streak += 1
+            if current_streak > best_streak:
+                best_streak = current_streak
+        else:
+            current_streak = 0
+    return best_streak
+
 def assign_ranks(entries):
     entries.sort(key=lambda g: g.total_score, reverse=True)
     for i, g in enumerate(entries):
@@ -161,6 +196,13 @@ def compute_player_stats(user, include_practice=False):
         if g.rank:
             placements[g.rank] = placements.get(g.rank, 0) + 1
 
+    best_streak = 0
+    for g in games:
+        if g.frames:
+            streak = best_strike_streak_in_game(g.frames)
+            if streak > best_streak:
+                best_streak = streak
+
     last_five = games[:5]
     last_five_scores = [g.total_score for g in last_five]
 
@@ -174,6 +216,7 @@ def compute_player_stats(user, include_practice=False):
             "gutter_balls": 0,
             "last_five": [], "placements": {}, "sessions": 0,
             "score_history": [],
+            "best_strike_streak": 0,
         }
 
     nsf = total_frames - total_strikes
@@ -201,6 +244,7 @@ def compute_player_stats(user, include_practice=False):
         "score_history": score_history,
         "placements": placements,
         "sessions": len(set(g.session_id for g in games)),
+        "best_strike_streak": best_streak,
     }
 
 
@@ -444,12 +488,37 @@ def dashboard():
                 "color": CHART_COLORS[i % len(CHART_COLORS)],
             })
 
+    # ── Reigning champion (last winner + consecutive wins) ──
+    all_sessions = GameSession.query.order_by(
+        GameSession.date.desc(), GameSession.created_at.desc()
+    ).all()
+    reigning_champion = None
+    reigning_champion_id = None
+    consecutive_wins = 0
+    for sess in all_sessions:
+        if not include_practice and all(g.practice for g in sess.entries):
+            continue
+        winner = Game.query.filter_by(session_id=sess.id, rank=1).first()
+        if not winner:
+            continue
+        if reigning_champion is None:
+            reigning_champion = winner.player.username
+            reigning_champion_id = winner.player.id
+            consecutive_wins = 1
+        elif winner.user_id == reigning_champion_id:
+            consecutive_wins += 1
+        else:
+            break
+
     return render_template(
         "dashboard.html",
         players=players,
         chart_data=chart_data,
         recent_sessions=recent_sessions,
         include_practice=include_practice,
+        reigning_champion=reigning_champion,
+        reigning_champion_id=reigning_champion_id,
+        consecutive_wins=consecutive_wins,
     )
 
 
@@ -529,6 +598,15 @@ def player_stats(user_id):
         if g.rank:
             placements[g.rank] = placements.get(g.rank, 0) + 1
 
+    best_streak = 0
+    for g in games:
+        if g.frames:
+            streak = best_strike_streak_in_game(g.frames)
+            if streak > best_streak:
+                best_streak = streak
+
+    win_streak = longest_winning_streak(player.id, include_practice)
+
     best_game = max(games, key=lambda g: g.total_score) if games else None
     best_closed_game = None
     best_closed_rate = -1
@@ -589,6 +667,8 @@ def player_stats(user_id):
             "closed": closed,
             "gutter_balls": total_gutter_balls,
             "placements": placements,
+            "best_strike_streak": best_streak,
+            "longest_win_streak": win_streak,
         },
     )
 
