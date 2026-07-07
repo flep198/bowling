@@ -304,19 +304,21 @@ td {
 .stat-pct { font-variant-numeric: tabular-nums; }
 
 .placements {
-  display: flex;
-  gap: 0.4rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
+.placements span { margin-right: 0.4rem; }
+.placements span:last-child { margin-right: 0; }
 
 .placements .p1 { color: #f5c842; font-weight: 700; }
 .placements .p2 { color: #b0c4d8; font-weight: 600; }
 .placements .p3 { color: #cd7f32; font-weight: 600; }
 
 .last-five {
-  display: flex;
-  gap: 0.25rem;
+  white-space: nowrap;
 }
+.last-five .score-chip { margin-right: 0.25rem; }
+.last-five .score-chip:last-child { margin-right: 0; }
 
 .score-chip {
   display: inline-flex;
